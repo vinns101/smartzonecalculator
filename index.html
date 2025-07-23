@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SmartZone Resource Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .note { font-size: 0.875rem; color: #555; margin-top: 0.5rem; }
+    .matrix { display: none; margin-top: 1rem; font-size: 0.875rem; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-8">
+  <div class="max-w-2xl mx-auto bg-white p-6 rounded shadow">
+    <h2 class="text-2xl font-semibold mb-4">Virtual SmartZone Resource Calculator</h2>
+
+    <div class="space-y-4">
+      <label class="block">
+        <span class="text-sm font-medium">SmartZone Version</span>
+        <select id="version" class="mt-1 block w-full border-gray-300 rounded"></select>
+        <div id="versionNote" class="note"></div>
+        <div id="apList" class="note mt-2"></div>
+        <div id="szList" class="note mt-1"></div>
+        <div id="switchList" class="note mt-1"></div>
+      </label>
+
+      <label class="block">
+        <span class="text-sm font-medium">Controller Type</span>
+        <select id="controllerType" class="mt-1 block w-full border-gray-300 rounded">
+          <option value="vSZ-Essentials">vSZ-Essentials</option>
+          <option value="vSZ-HighScale">vSZ-HighScale</option>
+        </select>
+      </label>
+
+      <label class="block">
+        <span class="text-sm font-medium">Deployment Type</span>
+        <select id="deploymentType" class="mt-1 block w-full border-gray-300 rounded">
+          <option value="on_prem">On-Prem</option>
+          <option value="nutanix">Nutanix</option>
+          <option value="cloud">Public Cloud</option>
+        </select>
+      </label>
+
+      <label class="block">
+        <span class="text-sm font-medium">APs (Dual-band)</span>
+        <input type="number" id="AP_dual_band_qty" value="100" class="mt-1 block w-full border-gray-300 rounded">
+      </label>
+
+      <label class="block">
+        <span class="text-sm font-medium">APs (Tri-band)</span>
+        <input type="number" id="AP_tri_band_qty" value="50" class="mt-1 block w-full border-gray-300 rounded">
+      </label>
+
+      <label class="block">
+        <span class="text-sm font-medium">ICX Switches</span>
+        <input type="number" id="ICX_qty" value="20" class="mt-1 block w-full border-gray-300 rounded">
+      </label>
+
+      <label class="block">
+        <span class="text-sm font-medium">Ruckus Edge Devices</span>
+        <input type="number" id="Edge_qty" value="10" class="mt-1 block w-full border-gray-300 rounded">
+      </label>
+    </div>
+
+    <div class="mt-6 flex gap-4">
+      <button onclick="runCalculator()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        Calculate
+      </button>
+      <button onclick="toggleMatrix()" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
+        Toggle AP Matrix
+      </button>
+    </div>
+
+    <div id="results" class="mt-6 p-4 bg-gray-100 border rounded text-sm"></div>
+    <div id="apMatrix" class="matrix bg-gray-50 p-4 border rounded">
+      <strong>AP Support Matrix:</strong><br>
+      <ul class="list-disc ml-4 mt-2">
+        <li><strong>3.6.2</strong>: ZF7372, R700, R500</li>
+        <li><strong>5.2.2</strong>: R510, R610, T310, H510</li>
+        <li><strong>6.0</strong>: R610, R720, T610</li>
+        <li><strong>6.1</strong>: R750, T750, H550</li>
+        <li><strong>6.1.2</strong>: R750, T750, H350, R650</li>
+        <li><strong>7.0</strong>: R560, R670, T670</li>
+        <li><strong>7.1</strong>: R670, T670sn, R770</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const fallbackVersions = [
+      {
+        id: "3.6.2",
+        status: "Legacy",
+        notes: "Supports older APs like ZF7372, R700",
+        supportedAPs: ["ZF7372", "R700", "R500"],
+        supportedSZModels: ["SZ100", "SZ300", "vSZ-E"],
+        supportedSwitches: ["ICX 7150", "ICX 7250"]
+      },
+      {
+        id: "5.2.2",
+        status: "LT-GD",
+        notes: "Stable for mid-generation APs",
+        supportedAPs: ["R510", "R610", "T310", "H510"],
+        supportedSZModels: ["SZ300", "vSZ-E", "vSZ-H"],
+        supportedSwitches: ["ICX 7150", "ICX 7450", "ICX 7650"]
+      },
+      {
+        id: "6.0",
+        status: "ST",
+        notes: "Transition version for newer APs",
+        supportedAPs: ["R610", "R720", "T610"],
+        supportedSZModels: ["vSZ-H", "vSZ-E"],
+        supportedSwitches: ["ICX 7150", "ICX 7650"]
+      },
+      {
+        id: "6.1",
+        status: "LT",
+        notes: "Supports zones from 5.2.2 and 6.0",
+        supportedAPs: ["R750", "T750", "H550"],
+        supportedSZModels: ["SZ300", "vSZ-H", "vSZ-E"],
+        supportedSwitches: ["ICX 7650", "ICX 7850"]
+      },
+      {
+        id: "6.1.2",
+        status: "LT-GD Patch 3",
+        notes: "Best for Wi-Fi 6 APs like R750, T750",
+        supportedAPs: ["R750", "T750", "H350", "R650"],
+        supportedSZModels: ["SZ300", "vSZ-H", "vSZ-E"],
+        supportedSwitches: ["ICX 7650", "ICX 7850"]
+      },
+      {
+        id: "7.0",
+        status: "GA",
+        notes: "Supports Wi-Fi 6E APs like R560, R670",
+        supportedAPs: ["R560", "R670", "T670"],
+        supportedSZModels: ["vSZ-H", "vSZ-E"],
+        supportedSwitches: ["ICX 7850", "ICX 8200"]
+      },
+      {
+        id: "7.1",
+        status: "LT-GA",
+        notes: "Supports Wi-Fi 7 APs like R670, T670sn",
+        supportedAPs: ["R670", "T670sn", "R770"],
+        supportedSZModels: ["vSZ-H", "vSZ-E"],
+        supportedSwitches: ["ICX 8200", "ICX 8300"]
+      }
+    ];
+
+    const resourceData = {
+      "vSZ-Essentials": {
+        base: { CPU: 4, RAM: 8, Storage: 100 },
+        scale: {
+          AP_dual_band: { CPU: 0.1, RAM: 0.2, Storage: 0.5 },
+          AP_tri_band: { CPU: 0.15, RAM: 0.3, Storage: 0.6 },
+          ICX: { CPU: 0.05, RAM: 0.1, Storage: 0.2 },
+          Edge: { CPU: 0.1, RAM: 0.2, Storage: 0.4 }
+        }
+      },
+      "vSZ-HighScale": {
+        base: { CPU: 8, RAM: 16, Storage: 200 },
+        scale: {
+                    AP_dual_band: { CPU: 0.08, RAM: 0.15, Storage: 0.4 },
+          AP_tri_band: { CPU: 0.12, RAM: 0.25, Storage: 0.5 },
+          ICX: { CPU: 0.04, RAM: 0.08, Storage: 0.15 },
+          Edge: { CPU: 0.08, RAM: 0.15, Storage: 0.3 }
+        }
+      },
+      deployment: {
+        on_prem: { CPU: 1.0, RAM: 1.0, Storage: 1.0 },
+        nutanix: { CPU: 1.1, RAM: 1.2, Storage: 1.1 },
+        cloud: { CPU: 1.2, RAM: 1.3, Storage: 1.2 }
+      }
+    };
+
+    async function loadVersions() {
+      let versions = [];
+      try {
+        const res = await fetch("https://yourdomain.com/sz-versions.json");
+        const data = await res.json();
+        versions = data.versions;
+      } catch {
+        versions = fallbackVersions;
+      }
+      const versionSelect = document.getElementById("version");
+      versionSelect.innerHTML = "";
+      versions.forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v.id;
+        opt.textContent = `${v.id} (${v.status})`;
+        versionSelect.appendChild(opt);
+      });
+      versionSelect.onchange = () => {
+        const selected = versions.find(v => v.id === versionSelect.value);
+        document.getElementById("versionNote").textContent = selected?.notes || "";
+
+        const apList = selected?.supportedAPs?.length
+          ? `<strong>Supported APs:</strong> ${selected.supportedAPs.join(", ")}`
+          : "";
+        document.getElementById("apList").innerHTML = apList;
+
+        const szList = selected?.supportedSZModels?.length
+          ? `<strong>Supported SZ Models:</strong> ${selected.supportedSZModels.join(", ")}`
+          : "";
+        document.getElementById("szList").innerHTML = szList;
+
+        const switchList = selected?.supportedSwitches?.length
+          ? `<strong>Supported Switches:</strong> ${selected.supportedSwitches.join(", ")}`
+          : "";
+        document.getElementById("switchList").innerHTML = switchList;
+      };
+      versionSelect.dispatchEvent(new Event("change"));
+    }
+
+    function runCalculator() {
+      const controller = document.getElementById("controllerType").value;
+      const deploy = document.getElementById("deploymentType").value;
+      const dual = parseInt(document.getElementById("AP_dual_band_qty").value) || 0;
+      const tri = parseInt(document.getElementById("AP_tri_band_qty").value) || 0;
+      const icx = parseInt(document.getElementById("ICX_qty").value) || 0;
+      const edge = parseInt(document.getElementById("Edge_qty").value) || 0;
+
+      const base = resourceData[controller].base;
+      const scale = resourceData[controller].scale;
+      const adjust = resourceData.deployment[deploy];
+
+      const scaledCPU = base.CPU +
+        dual * scale.AP_dual_band.CPU +
+        tri * scale.AP_tri_band.CPU +
+        icx * scale.ICX.CPU +
+        edge * scale.Edge.CPU;
+
+      const scaledRAM = base.RAM +
+        dual * scale.AP_dual_band.RAM +
+        tri * scale.AP_tri_band.RAM +
+        icx * scale.ICX.RAM +
+        edge * scale.Edge.RAM;
+
+      const scaledStorage = base.Storage +
+        dual * scale.AP_dual_band.Storage +
+        tri * scale.AP_tri_band.Storage +
+        icx * scale.ICX.Storage +
+        edge * scale.Edge.Storage;
+
+      const finalCPU = Math.ceil(scaledCPU * adjust.CPU);
+      const finalRAM = Math.ceil(scaledRAM * adjust.RAM);
+      const finalStorage = Math.ceil(scaledStorage * adjust.Storage);
+
+      let feedback = "";
+      if ((dual + tri) > 500 && controller === "vSZ-Essentials") {
+        feedback = `<br><span class="text-red-600">⚠️ Consider using vSZ-HighScale for large deployments.</span>`;
+      }
+
+      document.getElementById("results").innerHTML = `
+        <strong>Minimum Resource Recommendations:</strong><br>
+        Total APs: ${dual + tri} | ICX: ${icx} | Edge: ${edge}<br><br>
+        <div class="space-y-2">
+          <div><strong>CPU Cores:</strong> ${finalCPU}</div>
+          <div class="w-full bg-gray-200 rounded h-4">
+            <div class="bg-blue-600 h-4 rounded" style="width: ${Math.min(finalCPU * 4, 100)}%;"></div>
+          </div>
+
+          <div><strong>RAM:</strong> ${finalRAM} GB</div>
+          <div class="w-full bg-gray-200 rounded h-4">
+            <div class="bg-green-600 h-4 rounded" style="width: ${Math.min(finalRAM * 2, 100)}%;"></div>
+          </div>
+
+          <div><strong>Storage:</strong> ${finalStorage} GB</div>
+          <div class="w-full bg-gray-200 rounded h-4">
+            <div class="bg-yellow-500 h-4 rounded" style="width: ${Math.min(finalStorage / 2, 100)}%;"></div>
+          </div>
+        </div>
+        ${feedback}
+      `;
+    }
+
+    function toggleMatrix() {
+      const matrix = document.getElementById("apMatrix");
+      matrix.style.display = matrix.style.display === "none" ? "block" : "none";
+    }
+
+    window.onload = loadVersions;
+  </script>
+</body>
+</html>
