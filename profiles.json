@@ -1,0 +1,21 @@
+{
+  "7.1.0": {
+    "highscale": {
+      "on_prem": [
+        { "maxAPs": 1000, "vCPU": 8, "RAM": 32, "Disk": 200 }
+      ]
+    },
+    "essentials": {
+      "on_prem": [
+        { "maxAPs": 300, "vCPU": 4, "RAM": 16, "Disk": 100 }
+      ]
+    }
+  },
+  "7.0.0": {
+    "highscale": {
+      "on_prem": [
+        { "maxAPs": 800, "vCPU": 6, "RAM": 24, "Disk": 180 }
+      ]
+    }
+  }
+}
