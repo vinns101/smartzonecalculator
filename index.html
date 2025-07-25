@@ -69,8 +69,8 @@
 
     window.onload = () => {
       Promise.all([
-        fetch("https://yourdomain.com/profiles.json").then(res => res.json()),
-        fetch("https://yourdomain.com/compatibility.json").then(res => res.json())
+        fetch("https://vinns101.github.com/profiles.json").then(res => res.json()),
+        fetch("https://vinns101.github.com/compatibility.json").then(res => res.json())
       ])
       .then(([profiles, compatibility]) => {
         resourceData = profiles;
