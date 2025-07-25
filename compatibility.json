@@ -1,0 +1,14 @@
+{
+  "7.1.0": {
+    "supportedAPs": ["R760", "R750", "R650"],
+    "switches": ["ICX 7150", "ICX 7450"],
+    "platforms": ["VMware ESXi", "Azure"],
+    "unsupported": ["VirtualBox"]
+  },
+  "7.0.0": {
+    "supportedAPs": ["R750", "R650"],
+    "switches": ["ICX 7150"],
+    "platforms": ["VMware ESXi"],
+    "unsupported": ["VirtualBox"]
+  }
+}
