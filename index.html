@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SmartZone Resource Calculator</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    select, table { margin-top: 10px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h2>SmartZone Resource Calculator</h2>
+  <div id="versionNotice" style="color: red;"></div>
+  <label for="versionSelect">Select Version:</label>
+  <select id="versionSelect"></select>
+
+  <h3>Resource Details</h3>
+  <div id="resourceTable"></div>
+
+  <h3>Compatibility</h3>
+  <div id="compatibilityInfo"></div>
+
+  <script>
+    let resourceData = {};
+    let versionSupportData = {};
+    let currentVersion = "";
+
+    function populateVersionDropdown(versions) {
+      const select = document.getElementById("versionSelect");
+      select.innerHTML = "";
+      versions.forEach(v => {
+        const option = document.createElement("option");
+        option.value = v;
+        option.textContent = v;
+        select.appendChild(option);
+      });
+      select.onchange = () => showVersionDetails(select.value);
+    }
+
+    function showVersionDetails(version) {
+      currentVersion = version;
+      const data = resourceData[version];
+      const compat = versionSupportData[version];
+
+      let html = "<table><tr><th>Profile</th><th>Max APs</th><th>vCPU</th><th>RAM</th><th>Disk</th></tr>";
+      for (const profile in data) {
+        for (const platform in data[profile]) {
+          data[profile][platform].forEach(entry => {
+            html += `<tr><td>${profile} (${platform})</td><td>${entry.maxAPs}</td><td>${entry.vCPU}</td><td>${entry.RAM} GB</td><td>${entry.Disk} GB</td></tr>`;
+          });
+        }
+      }
+      html += "</table>";
+      document.getElementById("resourceTable").innerHTML = html;
+
+      let compatHtml = `
+        <p><strong>Supported APs:</strong> ${compat.supportedAPs.join(", ")}</p>
+        <p><strong>Switches:</strong> ${compat.switches.join(", ")}</p>
+        <p><strong>Platforms:</strong> ${compat.platforms.join(", ")}</p>
+        <p><strong>Unsupported:</strong> ${compat.unsupported.join(", ")}</p>
+      `;
+      document.getElementById("compatibilityInfo").innerHTML = compatHtml;
+
+      const latestVersion = Object.keys(resourceData).sort().reverse()[0];
+      document.getElementById("versionNotice").textContent =
+        version !== latestVersion ? `New version ${latestVersion} available!` : "";
+    }
+
+    window.onload = () => {
+      Promise.all([
+        fetch("https://yourdomain.com/profiles.json").then(res => res.json()),
+        fetch("https://yourdomain.com/compatibility.json").then(res => res.json())
+      ])
+      .then(([profiles, compatibility]) => {
+        resourceData = profiles;
+        versionSupportData = compatibility;
+        const versions = Object.keys(resourceData).sort().reverse();
+        populateVersionDropdown(versions);
+        showVersionDetails(versions[0]);
+      })
+      .catch(err => {
+        console.error("Failed to load data:", err);
+        document.getElementById("resourceTable").innerHTML = `<span style="color:red;">Error loading data.</span>`;
+      });
+    };
+  </script>
+</body>
+</html>
